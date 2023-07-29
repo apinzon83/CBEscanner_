@@ -36,6 +36,10 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<String> lngList;
     ProgressBar pbSinc;
 
+    ArrayAdapter<String> adapter;
+
+    private SyncTask syncTask;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,16 +58,14 @@ public class MainActivity extends AppCompatActivity {
 
         //carga de ejemplo, borrar antes de liberar
         Log.d("llenamos la lista de prueba","Listo");
-        for (int i = 50; i < 54; i++) {
+        for (int i = 56; i < 58; i++) {
             lngList.add("1234567890"+i+" - "+i+" - producto "+i);
         }
-        // hasta aqui
-        setpbVisibility(false);
 
         btnSincronizar.setEnabled(true);//cambiar a false antes de liberar
 
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, lngList);
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, lngList);
 
         lvListaCR.setAdapter(adapter);
 
@@ -116,40 +118,32 @@ public class MainActivity extends AppCompatActivity {
         btnSincronizar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //vamos a guardar la lista de articulos escaneados
-                //primero nos conectamos a la bd
-                setpbVisibility(true);
-                Connection connection = conexionBD();
-                try {
-                    if (connection != null) {
-                        //recorremos el adaptador
-                        for(String ss:lngList) {
-                            //Toast.makeText(getApplicationContext(), ss, Toast.LENGTH_LONG).show();
-                            //System.out.println(ss);
-                            //separo codigo barras, cantidad y descripcion
-                            String cb = ss.split("-")[0];
-                            String cant = ss.split("-")[1];
-                            String desc = ss.split("-")[2];
-                            PreparedStatement stm = conexionBD().prepareStatement("insert into producto (codigo, etiqueta, cantidad, fecha_cap, id_usuario) values ('"+cb+"', '"+desc+"', "+cant+", getdate(),1);");
-                            stm.executeUpdate();
-                            Log.i("Producto insertado: ", desc );
-                        }
-                        lngList.removeAll(lngList);
-                        adapter.notifyDataSetChanged();
-                        btnSincronizar.setEnabled(false);
-                        connection.close();
-                        Toast.makeText(getApplicationContext(), "Sincronización correcta.", Toast.LENGTH_LONG).show();
-                    }
-                } catch (Exception e) {
-                    String tit = "Error al tratar de sincronizar ";
-                    String msg = e.getMessage();
-                    Log.e(tit, msg);
-                    Log.d(tit, msg);
-                    Toast.makeText(getApplicationContext(), tit + msg, Toast.LENGTH_LONG).show();
-                }
-                setpbVisibility(false);
+                // Iniciar el proceso de sincronización en un hilo separado utilizando SyncTask
+                syncTask = new SyncTask(MainActivity.this);
+                new Thread(syncTask).start();
             }
         });
+    }
+
+    // Add getter methods for the required variables used in SyncTask
+    public ArrayList<String> getLngList() {
+        return lngList;
+    }
+
+    public ArrayAdapter<String> getAdapter() {
+        return adapter;
+    }
+
+    public Button getBtnSincronizar() {
+        return btnSincronizar;
+    }
+
+    public void setpbSincVisibility(boolean isVisible) {
+        pbSinc.setVisibility(isVisible ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    public void changebtnSincState(boolean isEnable) {
+        btnSincronizar.setEnabled(isEnable);
     }
 
     public void setpbVisibility(boolean visibility) {
@@ -190,4 +184,3 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 }
-
